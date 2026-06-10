@@ -5,7 +5,7 @@ const domInstance = {
   element: { type, props },
   childInstances: [...]
 }
-
+组件 = 可复用的UI零件 + 自己的数据(状态) + 自己的行为(逻辑)
 // 🆕 当前版本中的组件实例（多了 publicInstance）
 const componentInstance = {
   dom: <真实 DOM>,

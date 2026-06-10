@@ -6,6 +6,7 @@ const domInstance = {
   childInstances: [...]
 }
 组件 = 可复用的UI零件 + 自己的数据(状态) + 自己的行为(逻辑)
+每个 组件 是独立的
 // 🆕 当前版本中的组件实例（多了 publicInstance）
 const componentInstance = {
   dom: <真实 DOM>,
@@ -13,6 +14,55 @@ const componentInstance = {
   childInstance: {...},            // 子实例（组件 render 返回的内容）
   publicInstance: new App(props)   // 🆕 组件实例本身
 }
+
+// ❌ 没有组件，所有代码混在一起
+const appElement = (
+  <div>
+    <h1>Didact Stories</h1>
+    <ul>
+      <li>
+        <button>42❤️</button>
+        <a href="http://bit.ly/2pX7HNn">Didact introduction</a>
+      </li>
+      <li>
+        <button>73❤️</button>
+        <a href="http://bit.ly/2qCOejH">Rendering DOM elements</a>
+      </li>
+      <li>
+        <button>18❤️</button>
+        <a href="http://bit.ly/2qGbw8S">Element creation and JSX</a>
+      </li>
+      { 5个故事就要重复写5次 }
+    </ul>
+  </div>
+);
+// ✅ 定义 Story 组件（一次）
+class Story extends Didact.Component {
+  constructor(props) {
+    super(props);
+    this.state = { likes: Math.ceil(Math.random() * 100) };
+  }
+  like() {
+    this.setState({ likes: this.state.likes + 1 });
+  }
+  render() {
+    const { name, url } = this.props;
+    const { likes } = this.state;
+    return (
+      <li>
+        <button onClick={e => this.like()}>{likes}❤️</button>
+        <a href={url}>{name}</a>
+      </li>
+    );
+  }
+}
+
+// ✅ 使用 Story 组件（数据有多少个，就用多少次）
+<ul>
+  {stories.map(story => (
+    <Story name={story.name} url={story.url} />
+  ))}
+</ul>
 */
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();

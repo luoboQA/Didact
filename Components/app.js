@@ -12,7 +12,7 @@ const componentInstance = {
   dom: <真实 DOM>,
   element: { type, props },        // type 是函数/类
   childInstance: {...},            // 子实例（组件 render 返回的内容）
-  publicInstance: new App(props)   // 🆕 组件实例本身
+  publicInstance: new App(props)   // 🆕 组件实例本身，存储组件的状态（state）和行为（方法）
 }
 
 // ❌ 没有组件，所有代码混在一起

@@ -1,3 +1,19 @@
+/*
+// Reconciliation_Render 中的 DOM 实例
+const domInstance = {
+  dom: <真实 DOM>,
+  element: { type, props },
+  childInstances: [...]
+}
+
+// 🆕 当前版本中的组件实例（多了 publicInstance）
+const componentInstance = {
+  dom: <真实 DOM>,
+  element: { type, props },        // type 是函数/类
+  childInstance: {...},            // 子实例（组件 render 返回的内容）
+  publicInstance: new App(props)   // 🆕 组件实例本身
+}
+*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();
 
@@ -97,9 +113,9 @@ function importFromBelow() {
       instance.element = element;
       return instance;
     } else {
-      //Update composite instance
-      instance.publicInstance.props = element.props;
-      const childElement = instance.publicInstance.render();
+      // 🆕Update composite instance
+      instance.publicInstance.props = element.props; // 更新 props
+      const childElement = instance.publicInstance.render(); // 重新渲染
       const oldChildInstance = instance.childInstance;
       const childInstance = reconcile(
         parentDom,
@@ -133,7 +149,7 @@ function importFromBelow() {
     const isDomElement = typeof type === "string";
 
     if (isDomElement) {
-      // Instantiate DOM element
+      // Instantiate DOM element,原有逻辑创建 DOM 元素实例
       const isTextElement = type === TEXT_ELEMENT;
       const dom = isTextElement
         ? document.createTextNode("")
@@ -149,10 +165,10 @@ function importFromBelow() {
       const instance = { dom, element, childInstances };
       return instance;
     } else {
-      // Instantiate component element
+      // Instantiate component element,🆕 创建组件实例
       const instance = {};
       const publicInstance = createPublicInstance(element, instance);
-      const childElement = publicInstance.render();
+      const childElement = publicInstance.render(); // 调用组件的 render
       const childInstance = instantiate(childElement);
       const dom = childInstance.dom;
 
@@ -189,8 +205,8 @@ function importFromBelow() {
   }
   function createPublicInstance(element, internalInstance) {
     const { type, props } = element;
-    const publicInstance = new type(props);
-    publicInstance.__internalInstance = internalInstance;
+    const publicInstance = new type(props);  // new App(props)
+    publicInstance.__internalInstance = internalInstance;  // 关联回内部实例
     return publicInstance;
   }
 
@@ -202,7 +218,7 @@ function importFromBelow() {
 
     setState(partialState) {
       this.state = Object.assign({}, this.state, partialState);
-      updateInstance(this.__internalInstance);
+      updateInstance(this.__internalInstance); // 🆕 触发更新
     }
   }
 

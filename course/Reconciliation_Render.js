@@ -1,6 +1,19 @@
   // 实现首次渲染,智能更新（Reconciliation）,不再重建整颗树
   //每次更改都会触发完整虚拟DOM树上的对比 State是-global-的 我们需要render在更改状态后-显式调用该函数
   /*
+虚拟 DOM 层                   真实 DOM 层
+─────────────────────────────────────────────────
+
+instance = {                  <div id="root">
+  dom: ─────────────────────→   <div class="app">
+  element: {...},                   <h1>标题</h1>
+  childInstances: [...]             <button>按钮</button>
+}                                 </div>
+                              </div>
+
+      ↑                              ↑
+   通过 dom 指向               页面上真实显示
+
   // 第1层：Didact 元素（你写的 JSX 编译结果）
 const element = {
   type: "div",
@@ -201,7 +214,7 @@ function createElement(type, config, ...args) {
   调用 instantiate(element) 后，生成的 instance 结构如下：
   const instance = {
   // 1. dom: 对应的真实 DOM 节点
-  dom: document.createElement("div")即<div>...</div>,  // 真实 DOM 元素
+  dom: 虚拟层document.createElement("div")返回的对象 真实层即<div>...</div>,  // 真实 DOM 元素
   
   // 2. element: 原来的 Didact 元素
   element: {

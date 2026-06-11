@@ -1,3 +1,24 @@
+// Fiber 是一个 JavaScript 对象，代表一个工作单元，它通过链表连接，形成可遍历、可中断的工作树,不再立即渲染，而是放入队列，等浏览器空闲时处理requestIdleCallback(performWork)
+/* const fiber = {
+  // 基本信息
+  type: "div",           // 元素类型
+  props: {...},          // 属性
+  stateNode: <真实DOM>,   // 对应的真实 DOM
+  
+  // 链表连接
+  parent: fiber,         // 父节点
+  child: fiber,          // 第一个子节点
+  sibling: fiber,        // 下一个兄弟节点
+  
+  // 工作相关
+  alternate: fiber,      // 上一次提交的版本（双缓冲）
+  effectTag: PLACEMENT,  // 操作类型：增/删/改
+  effects: [fiber],      // 需要提交的子节点列表
+  
+  // 组件相关
+  tag: "host",           // 类型：host/class/root
+  partialState: {...}    // 待更新的 state
+};*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();
 

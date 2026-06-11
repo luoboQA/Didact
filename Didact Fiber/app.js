@@ -34,6 +34,29 @@ function workLoop(deadline) {
     // 每次只做一个节点，检查时间，不够就暂停
   }
 }把一个大任务拆成多个小任务（Fiber 节点），每做完一个小任务就检查是否还有空闲时间，没有就暂停，让浏览器先响应用户
+
+// 递归调用栈（隐式）
+function render(div) {
+  render(h1);      // 调用栈：render(div) → render(h1) → 返回
+  render(ul);      // 调用栈：render(div) → render(ul) → render(li1) → 返回
+}
+
+// 你的 JSX Fiber
+<div>           ← Fiber A
+  <h1>标题</h1>  ← Fiber B
+  <ul>          ← Fiber C
+    <li>1</li>  ← Fiber D
+    <li>2</li>  ← Fiber E
+  </ul>
+</div>
+
+// Fiber 树（链表结构）
+Fiber A (div)
+  ├── child: Fiber B (h1)
+  │     └── sibling: Fiber C (ul)
+  │           └── child: Fiber D (li)
+  │                 └── sibling: Fiber E (li)
+  └── parent: null
 */
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();

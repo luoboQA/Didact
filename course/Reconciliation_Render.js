@@ -13,6 +13,9 @@ instance = {                  <div id="root">
 
       ↑                              ↑
    通过 dom 指向               页面上真实显示
+   
+虚拟 DOM：Didact.createElement
+真实 DOM：document.createElement
 
   // 第1层：Didact 元素（你写的 JSX 编译结果）
 const element = {

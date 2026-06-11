@@ -113,7 +113,34 @@ requestIdleCallback(performWork);  // 但只执行一次！浏览器会合并
 //    执行 performWork，一次性处理5个更新
 
 // 4. 只渲染一次！而不是5次
-}*/
+}
+
+// 假设树结构
+<div>           // Fiber A
+  <h1>标题</h1>  // Fiber B（新增）
+  <ul>           // Fiber C（更新）
+    <li>1</li>   // Fiber D（删除）
+  </ul>
+</div>
+
+// 根 Fiber 的 effects 数组
+fiber.effects = [
+  { type: "h1", effectTag: PLACEMENT, stateNode: <h1> },  // 新增
+  { type: "ul", effectTag: UPDATE, stateNode: <ul> },     // 更新
+  { type: "li", effectTag: DELETION, stateNode: <li> }    // 删除
+]
+pendingCommit 指向根 Fiber,最开始 pendingCommit = null，在 completeWork 处理根节点时被赋值为根 Fiber
+performUnitOfWork(h1)
+  ├─ beginWork(h1)
+  ├─ 没有 child
+  ├─ completeWork(h1)  // ← h1 有 parent，合并 effects 到 div
+  ├─ 没有 sibling，回到 div
+  ├─ completeWork(div)  // ← div 有 parent，合并 effects 到 root
+  ├─ 没有 sibling，回到 root
+  ├─ completeWork(root) // ← 🎯 root 没有 parent！
+  │       pendingCommit = root;  // 改变！
+  └─ 返回 null
+*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();
 

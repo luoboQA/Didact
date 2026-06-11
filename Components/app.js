@@ -63,6 +63,42 @@ class Story extends Didact.Component {
     <Story name={story.name} url={story.url} />
   ))}
 </ul>
+
+class Counter extends Didact.Component {
+  render() {
+    // 你写 JSX
+    return (
+      <div>
+        <h1>计数器</h1>
+        <button>点我</button>
+      </div>
+    );
+  }
+}
+
+我们写的JSX 在 render() 中，Babel 编译后变成 createElement 调用，最终返回 { type, props } 对象
+class Counter extends Didact.Component {
+  render() {
+    // JSX 被编译成 createElement 调用
+    return Didact.createElement("div", null,
+      Didact.createElement("h1", null, "计数器"),
+      Didact.createElement("button", null, "点我")
+    );
+  }
+}
+createElement 执行
+// Didact.createElement 返回 { type, props }
+Didact.createElement("div", null, ...)
+// 返回：
+{
+  type: "div",
+  props: {
+    children: [
+      { type: "h1", props: { children: ["计数器"] } },
+      { type: "button", props: { children: ["点我"] } }
+    ]
+  }
+}
 */
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();

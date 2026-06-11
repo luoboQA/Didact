@@ -130,16 +130,41 @@ fiber.effects = [
   { type: "li", effectTag: DELETION, stateNode: <li> }    // 删除
 ]
 pendingCommit 指向根 Fiber,最开始 pendingCommit = null，在 completeWork 处理根节点时被赋值为根 Fiber
-performUnitOfWork(h1)
-  ├─ beginWork(h1)
-  ├─ 没有 child
-  ├─ completeWork(h1)  // ← h1 有 parent，合并 effects 到 div
-  ├─ 没有 sibling，回到 div
-  ├─ completeWork(div)  // ← div 有 parent，合并 effects 到 root
-  ├─ 没有 sibling，回到 root
-  ├─ completeWork(root) // ← 🎯 root 没有 parent！
-  │       pendingCommit = root;  // 改变！
+// 树结构
+root
+ └─ div
+     └─ button
+
+// performUnitOfWork 的返回值变化
+let next = root;
+
+// 第1步：处理 root
+next = performUnitOfWork(root)
+  ├─ beginWork(root)     // 处理 root
+  ├─ root 有 child → div
+  └─ 返回 div
+
+// 第2步：处理 div
+next = performUnitOfWork(div)
+  ├─ beginWork(div)      // 处理 div
+  ├─ div 有 child → button
+  └─ 返回 button
+
+// 第3步：处理 button
+next = performUnitOfWork(button)
+  ├─ beginWork(button)   // 处理 button
+  ├─ button 没有 child
+  ├─ completeWork(button) // 完成 button
+  ├─ button 没有 sibling
+  ├─ 向上回到 div
+  ├─ completeWork(div)    // 完成 div
+  ├─ div 没有 sibling
+  ├─ 向上回到 root
+  ├─ completeWork(root)   // 完成 root（设置 pendingCommit）
   └─ 返回 null
+
+// 第4步：没有更多节点
+next = null  // 循环结束
 */
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();

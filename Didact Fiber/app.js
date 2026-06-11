@@ -18,7 +18,22 @@
   // 组件相关
   tag: "host",           // 类型：host/class/root
   partialState: {...}    // 待更新的 state
-};*/
+};
+
+// 旧版（Stack Reconciler）
+function render(element, container) {
+  // 递归渲染整个树，一次性完成
+  // 如果树很大（10000个节点），会连续占用主线程 1 秒
+  // 用户点击、动画都会卡住
+}
+
+// 新版（Fiber Reconciler）
+function workLoop(deadline) {
+  while (nextUnitOfWork && deadline.timeRemaining() > 1) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    // 每次只做一个节点，检查时间，不够就暂停
+  }
+}*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();
 

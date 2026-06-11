@@ -33,7 +33,8 @@ function workLoop(deadline) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
     // 每次只做一个节点，检查时间，不够就暂停
   }
-}*/
+}把一个大任务拆成多个小任务（Fiber 节点），每做完一个小任务就检查是否还有空闲时间，没有就暂停，让浏览器先响应用户
+*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();
 

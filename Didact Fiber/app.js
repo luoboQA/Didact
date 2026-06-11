@@ -580,3 +580,299 @@ function importFromBelow() {
     Component
   };
 }
+
+/* 完整调用链（首次渲染）
+eg:
+/** @jsx Didact.createElement */
+const Didact = importFromBelow();
+
+// 计数器组件
+class Counter extends Didact.Component {
+  constructor(props) {
+    super(props);
+    this.state = { count: 0 };
+  }
+
+  handleClick = () => {
+    this.setState({ count: this.state.count + 1 });
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>计数: {this.state.count}</h1>
+        <button onClick={this.handleClick}>点我 +1</button>
+      </div>
+    );
+  }
+}
+
+Didact.render(<Counter />, document.getElementById("root"));
+
+阶段 0：初始状态
+// 页面
+<div id="root"></div>  // 空的
+阶段 1：render 入队
+Didact.render(<Counter />, document.getElementById("root"))
+    │
+    ▼
+function render(elements, containerDom) {
+  // 1. 创建更新任务，放入队列
+  updateQueue.push({
+    from: HOST_ROOT,           // 标记：这是根节点的更新
+    dom: containerDom,         // <div id="root">
+    newProps: { children: elements }  // <Counter />
+  });
+  
+  // 2. 请求空闲时执行
+  requestIdleCallback(performWork);
+}
+阶段 2：performWork 开始工作
+requestIdleCallback 触发
+    │
+    ▼
+function performWork(deadline) {
+  workLoop(deadline);
+  if (nextUnitOfWork || updateQueue.length > 0) {
+    requestIdleCallback(performWork);
+  }
+}
+    │
+    ▼
+function workLoop(deadline) {
+  // 第一次执行，nextUnitOfWork = null
+  if (!nextUnitOfWork) {
+    resetNextUnitOfWork();  // ← 从队列取任务
+  }
+  
+  // 循环处理 Fiber
+  while (nextUnitOfWork && deadline.timeRemaining() > 1) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+  }
+  
+  // 所有工作完成
+  if (pendingCommit) {
+    commitAllWork(pendingCommit);
+  }
+}
+阶段 3：resetNextUnitOfWork 创建根 Fiber
+  function resetNextUnitOfWork() {
+  const update = updateQueue.shift();  // 取出队列任务
+  // update = { from: "root", dom: root, newProps: { children: <Counter /> } }
+  
+  // 获取旧的根 Fiber（第一次为 null）
+  const root = update.dom._rootContainerFiber || null;
+  
+  // 创建新的根 Fiber
+  nextUnitOfWork = {
+    tag: HOST_ROOT,           // 标记：根节点
+    stateNode: update.dom,    // <div id="root">
+    props: update.newProps,   // { children: <Counter /> }
+    alternate: root,          // 旧版本（第一次为 null）
+    parent: null,
+    child: null,
+    sibling: null
+  };
+}
+阶段 4：performUnitOfWork 遍历 Fiber 树
+  // ========== 第1个 Fiber：根节点 ==========
+function performUnitOfWork(wipFiber) {
+  beginWork(wipFiber);  // 处理根节点
+  if (wipFiber.child) return wipFiber.child;  // 返回子节点
+  // ...
+}
+    │
+    ▼
+function beginWork(wipFiber) {
+  // wipFiber.tag = HOST_ROOT
+  if (wipFiber.tag == CLASS_COMPONENT) {
+    updateClassComponent(wipFiber);
+  } else {
+    updateHostComponent(wipFiber);  // ← 根节点走这里
+  }
+}
+    │
+    ▼
+function updateHostComponent(wipFiber) {
+  // 根节点没有 stateNode，且 tag != CLASS_COMPONENT
+  // 不创建 DOM，直接协调子节点
+  
+  const newChildElements = wipFiber.props.children;  // <Counter />
+  reconcileChildrenArray(wipFiber, newChildElements);
+}
+    │
+    ▼
+function reconcileChildrenArray(wipFiber, newChildElements) {
+  // elements = [<Counter />]
+  // oldFiber = null（第一次）
+  
+  const element = <Counter />;  // { type: Counter, props: {} }
+  
+  // 没有旧 Fiber，创建新 Fiber
+  newFiber = {
+    type: Counter,           // 组件类
+    tag: CLASS_COMPONENT,    // 标记：类组件
+    props: {},
+    parent: wipFiber,        // 父节点是根 Fiber
+    effectTag: PLACEMENT,    // 需要添加
+    stateNode: null          // 还没实例化
+  };
+  
+  wipFiber.child = newFiber;  // 根节点的 child 指向 Counter
+}
+    │
+    ▼
+// performUnitOfWork 返回 wipFiber.child（Counter Fiber）
+// 继续循环...
+
+// ========== 第2个 Fiber：Counter 组件 ==========
+function beginWork(wipFiber) {
+  // wipFiber.tag = CLASS_COMPONENT
+  if (wipFiber.tag == CLASS_COMPONENT) {
+    updateClassComponent(wipFiber);  // ← Counter 走这里
+  }
+}
+    │
+    ▼
+function updateClassComponent(wipFiber) {
+  let instance = wipFiber.stateNode;
+  
+  if (instance == null) {
+    // 1. 创建组件实例
+    instance = wipFiber.stateNode = new Counter({});  // new Counter()
+    instance.__fiber = wipFiber;  // 双向绑定
+  }
+  
+  // 2. 合并 state（第一次没有 partialState）
+  instance.state = { ...instance.state, ...wipFiber.partialState };
+  wipFiber.partialState = null;
+  
+  // 3. 调用 render()
+  const newChildElements = instance.render();
+  // Counter.render() 返回：
+  // {
+  //   type: "div",
+  //   props: {
+  //     children: [
+  //       { type: "h1", props: { children: ["计数: ", "0"] } },
+  //       { type: "button", props: { onClick: handleClick, children: ["点我 +1"] } }
+  //     ]
+  //   }
+  // }
+  
+  // 4. 协调子节点
+  reconcileChildrenArray(wipFiber, newChildElements);
+}
+    │
+    ▼
+function reconcileChildrenArray(wipFiber, newChildElements) {
+  // elements = [div元素, ？不对，render 返回的是单个 div，不是数组]
+  // 所以 elements = [div元素]（arrify 会包装成数组）
+  
+  // 创建 div 的 Fiber
+  newFiber = {
+    type: "div",
+    tag: HOST_COMPONENT,
+    props: {...},
+    parent: wipFiber,
+    effectTag: PLACEMENT
+  };
+  
+  wipFiber.child = newFiber;  // Counter.child = div
+}
+    │
+    ▼
+// ========== 第3个 Fiber：div ==========
+function updateHostComponent(wipFiber) {
+  // 1. 创建真实 DOM
+  if (!wipFiber.stateNode) {
+    wipFiber.stateNode = document.createElement("div");  // <div></div>
+  }
+  
+  // 2. 协调子节点（h1 和 button）
+  const newChildElements = wipFiber.props.children;  // [h1元素, button元素]
+  reconcileChildrenArray(wipFiber, newChildElements);
+}
+    │
+    ▼
+// ========== 第4个 Fiber：h1 ==========
+function updateHostComponent(wipFiber) {
+  if (!wipFiber.stateNode) {
+    wipFiber.stateNode = document.createElement("h1");  // <h1></h1>
+  }
+  
+  const newChildElements = wipFiber.props.children;  // ["计数: ", "0"]
+  reconcileChildrenArray(wipFiber, newChildElements);
+}
+    │
+    ▼
+// ========== 第5、6个 Fiber：文本节点 ==========
+function updateHostComponent(wipFiber) {
+  // 文本节点
+  wipFiber.stateNode = document.createTextNode("计数: ");
+  // 没有子节点，返回
+}
+// 继续处理 "0" 文本节点...
+
+// ========== 第7个 Fiber：button ==========
+function updateHostComponent(wipFiber) {
+  wipFiber.stateNode = document.createElement("button");
+  // 协调子节点...
+}
+阶段 5：completeWork 收集 Effect
+  // 当没有子节点后，开始向上完成工作
+function completeWork(fiber) {
+  // 将当前 fiber 的 effect 向上合并到父节点
+  if (fiber.parent) {
+    const childEffects = fiber.effects || [];
+    const thisEffect = fiber.effectTag != null ? [fiber] : [];
+    fiber.parent.effects = [...(fiber.parent.effects || []), ...childEffects, ...thisEffect];
+  } else {
+    // 根节点，准备提交
+    pendingCommit = fiber;
+  }
+}
+Effect 冒泡过程：
+文本节点 "计数: " → effectTag=PLACEMENT → 合并到 h1
+文本节点 "0" → effectTag=PLACEMENT → 合并到 h1
+h1 → effectTag=PLACEMENT + 子节点 effects → 合并到 div
+button → effectTag=PLACEMENT → 合并到 div
+div → effectTag=PLACEMENT + 子节点 effects → 合并到 Counter
+Counter → effectTag=PLACEMENT + 子节点 effects → 合并到 root
+root → pendingCommit = root（包含所有 effects）
+阶段 6：commitAllWork 提交到 DOM
+  function commitAllWork(fiber) {
+  // 遍历所有 effects，按顺序提交
+  fiber.effects.forEach(f => {
+    commitWork(f);
+  });
+  fiber.stateNode._rootContainerFiber = fiber;  // 保存
+  nextUnitOfWork = null;
+  pendingCommit = null;
+}
+
+function commitWork(fiber) {
+  // 找到真实父 DOM（跳过组件）
+  let domParentFiber = fiber.parent;
+  while (domParentFiber.tag == CLASS_COMPONENT) {
+    domParentFiber = domParentFiber.parent;
+  }
+  const domParent = domParentFiber.stateNode;
+  
+  if (fiber.effectTag == PLACEMENT) {
+    domParent.appendChild(fiber.stateNode);
+  } else if (fiber.effectTag == UPDATE) {
+    updateDomProperties(fiber.stateNode, fiber.alternate.props, fiber.props);
+  } else if (fiber.effectTag == DELETION) {
+    domParent.removeChild(fiber.stateNode);
+  }
+}
+提交顺序（深度优先）：
+1. 文本节点 "计数: " → domParent(h1).appendChild(文本节点)
+2. 文本节点 "0" → domParent(h1).appendChild(文本节点)
+3. h1 → domParent(div).appendChild(h1)
+4. button → domParent(div).appendChild(button)
+5. div → domParent(root).appendChild(div)
+6. Counter 没有 DOM，跳过
+7. root 不提交
+*/

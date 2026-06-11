@@ -31,6 +31,7 @@ const Didact = (function() {
       parentDom.appendChild(newInstance.dom);
       return newInstance;
     }
+    // 🆕 删除前
     if (element == null) {
       if (instance.publicInstance && instance.publicInstance.componentWillUnmount) {
         instance.publicInstance.componentWillUnmount();
@@ -38,6 +39,7 @@ const Didact = (function() {
       parentDom.removeChild(instance.dom);
       return null;
     }
+    // 🆕 替换前，删除旧组件
     if (instance.element.type !== element.type) {
       if (instance.publicInstance && instance.publicInstance.componentWillUnmount) {
         instance.publicInstance.componentWillUnmount();
@@ -60,13 +62,13 @@ const Didact = (function() {
     const oldProps = instance.element.props;
     const newProps = element.props;
     const oldState = publicInstance.state;
-    
+    // 🆕 接收新 props
     if (publicInstance.componentWillReceiveProps) {
       publicInstance.componentWillReceiveProps(newProps);
     }
     
     publicInstance.props = newProps;
-    
+    // 🆕 是否应该更新
     let shouldUpdate = true;
     if (publicInstance.shouldComponentUpdate) {
       shouldUpdate = publicInstance.shouldComponentUpdate(newProps, publicInstance.state);
@@ -76,7 +78,7 @@ const Didact = (function() {
       instance.element = element;
       return instance;
     }
-    
+    // 🆕 更新前
     if (publicInstance.componentWillUpdate) {
       publicInstance.componentWillUpdate(newProps, publicInstance.state);
     }
@@ -84,7 +86,7 @@ const Didact = (function() {
     const childElement = publicInstance.render();
     const oldChildInstance = instance.childInstance;
     const childInstance = reconcile(parentDom, oldChildInstance, childElement);
-    
+    // 🆕 更新后
     if (publicInstance.componentDidUpdate) {
       publicInstance.componentDidUpdate(oldProps, oldState);
     }
@@ -135,7 +137,7 @@ const Didact = (function() {
   function instantiateComponent(element) {
     const instance = {};
     const publicInstance = createPublicInstance(element, instance);
-    
+    // 🆕 挂载前：调用 componentWillMount
     if (publicInstance.componentWillMount) {
       publicInstance.componentWillMount();
     }
@@ -143,7 +145,7 @@ const Didact = (function() {
     const childElement = publicInstance.render();
     const childInstance = instantiate(childElement);
     const dom = childInstance.dom;
-    
+    // 🆕 挂载后：调用 componentDidMount
     if (publicInstance.componentDidMount) {
       publicInstance.componentDidMount();
     }
@@ -191,6 +193,7 @@ const Didact = (function() {
       this.state = Object.assign({}, this.state, partialState);
       updateInstance(this.__internalInstance);
     }
+    // 🆕 以下是新增的生命周期钩子（空实现）
     componentWillMount() {}
     componentDidMount() {}
     componentWillReceiveProps(nextProps) {}

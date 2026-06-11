@@ -93,11 +93,13 @@ if (workInProgress.alternate.props.className !== workInProgress.props.className)
 
 浏览器主线程的工作：
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 渲染页面 │ 执行JS │ 处理点击 │ 执行JS │ 渲染动画 │ 执行JS │ 空闲 │ 空闲 │
+│ 渲染页面 │ 执行JS │ 处理点击 │ 空闲 │ 执行JS │ 渲染动画 │ 执行JS │ 空闲 │
 └─────────────────────────────────────────────────────────────────────┘
-                                                                      ↑
-                                                              这时才执行
-                                                              performWork
+                               ↑                                   ↑
+                              执行                                 执行
+                          performWork                           performWork
+每个分片通常只执行 5ms 左右，然后主动让出主线程
+
 // 1. 用户快速点击按钮5次
 button.click();  // setState → scheduleUpdate → updateQueue.push ×5
 button.click();  // updateQueue 有5个任务

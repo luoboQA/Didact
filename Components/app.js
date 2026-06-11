@@ -216,10 +216,16 @@ function importFromBelow() {
       return instance;
     } else {
       // Instantiate component element,🆕 创建组件实例
-      const instance = {};
-      const publicInstance = createPublicInstance(element, instance);
+      const instance = {}; // 先创建空的 instance（占位符）
+      const publicInstance = createPublicInstance(element, instance); 
+      //  publicInstance = {
+      //   props: { stories },
+      //   state: {},
+      //   render: function() {...},
+      //   __internalInstance: instance  // 指向空对象
+      // }
       const childElement = publicInstance.render(); // 调用组件的 render
-      const childInstance = instantiate(childElement);
+      const childInstance = instantiate(childElement); // 递归处理 JSX
       const dom = childInstance.dom;
 
       Object.assign(instance, { dom, element, childInstance, publicInstance });
@@ -253,21 +259,34 @@ function importFromBelow() {
       dom.addEventListener(eventType, nextProps[name]);
     });
   }
+
+  // 把你的组件类（class App）实例化成真实对象，保存在 publicInstance 中
+  /*调用前：element = { type: App, props: { stories } }
+
+    调用后：
+publicInstance = {
+  props: { stories },
+  state: {},
+  __internalInstance: internalInstance,  // 指向 Didact 内部实例
+  render: function() {...},              // 你定义的方法
+  like: function() {...}                 // 你定义的方法
+}*/
   function createPublicInstance(element, internalInstance) {
-    const { type, props } = element;
+    const { type, props } = element; // type = App, props = { stories }
     const publicInstance = new type(props);  // new App(props)
     publicInstance.__internalInstance = internalInstance;  // 关联回内部实例
     return publicInstance;
   }
 
-  class Component {
-    constructor(props) {
+  class Component { // 所有组件继承这个类，获得 setState 能力
+    constructor(props) { // 接收 props，初始化 state
       this.props = props;
       this.state = this.state || {};
     }
 
-    setState(partialState) {
+    setState(partialState) { // 合并新状态，触发重新渲染
       this.state = Object.assign({}, this.state, partialState);
+      // __internalInstance保存 Didact 内部实例的引用，用于触发更新
       updateInstance(this.__internalInstance); // 🆕 触发更新
     }
   }

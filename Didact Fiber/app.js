@@ -90,6 +90,29 @@ const workInProgress = {
 // 对比时通过 alternate 拿到旧值
 if (workInProgress.alternate.props.className !== workInProgress.props.className) {
   // className 变了，需要更新
+
+浏览器主线程的工作：
+┌─────────────────────────────────────────────────────────────────────┐
+│ 渲染页面 │ 执行JS │ 处理点击 │ 执行JS │ 渲染动画 │ 执行JS │ 空闲 │ 空闲 │
+└─────────────────────────────────────────────────────────────────────┘
+                                                                      ↑
+                                                              这时才执行
+                                                              performWork
+// 1. 用户快速点击按钮5次
+button.click();  // setState → scheduleUpdate → updateQueue.push ×5
+button.click();  // updateQueue 有5个任务
+button.click();
+button.click();
+button.click();
+
+// 2. 每次调用 requestIdleCallback
+requestIdleCallback(performWork);  // 但只执行一次！浏览器会合并
+
+// 3. 浏览器处理完点击事件后（约 10ms）
+//    进入空闲时间（约 6ms）
+//    执行 performWork，一次性处理5个更新
+
+// 4. 只渲染一次！而不是5次
 }*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();

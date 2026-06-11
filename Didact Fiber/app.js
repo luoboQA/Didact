@@ -57,7 +57,40 @@ Fiber A (div)
   │           └── child: Fiber D (li)
   │                 └── sibling: Fiber E (li)
   └── parent: null
-*/
+第1步：render 入队 不立即渲染，而是放入队列，等浏览器空闲
+
+第2步：workLoop 工作循环
+
+第3步：performUnitOfWork 遍历 Fiber
+
+第4步：beginWork 处理不同类型的 Fiber
+
+第5步：reconcileChildrenArray 对比子节点
+
+第6步：completeWork 收集 Effect
+
+第7步：commitWork 提交到 DOM
+
+双缓冲（Alternate）
+
+// 当前屏幕上显示的是 current 树
+const currentTree = {
+  type: "div",
+  props: { className: "old" },
+  alternate: null
+};
+
+// 在内存中构建 workInProgress 树
+const workInProgress = {
+  type: "div",
+  props: { className: "new" },
+  alternate: currentTree  // ← 指向旧版本
+};
+
+// 对比时通过 alternate 拿到旧值
+if (workInProgress.alternate.props.className !== workInProgress.props.className) {
+  // className 变了，需要更新
+}*/
 /** @jsx Didact.createElement */
 const Didact = importFromBelow();
 
@@ -241,7 +274,7 @@ function importFromBelow() {
       dom: containerDom,
       newProps: { children: elements }
     });
-    requestIdleCallback(performWork);
+    requestIdleCallback(performWork); // 请求空闲时执行
   }
 
   function scheduleUpdate(instance, partialState) {
@@ -262,13 +295,16 @@ function importFromBelow() {
 
   function workLoop(deadline) {
     if (!nextUnitOfWork) {
-      resetNextUnitOfWork();
+      resetNextUnitOfWork(); // 从队列取任务，创建根 Fiber
     }
+    // 只要有工作单元，且还有空闲时间
     while (nextUnitOfWork) {
       nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+      //               ↑ 每次只处理一个 Fiber 节点
     }
+    // 所有工作都完成了
     if (pendingCommit) {
-      commitAllWork(pendingCommit);
+      commitAllWork(pendingCommit); // 提交到 DOM
     }
   }
 
@@ -304,8 +340,25 @@ function importFromBelow() {
     return node;
   }
 
+
+  /*
+  遍历顺序示例：
+ div
+ ├─ 1. 处理 div
+ ├─ 2. 进入 child → h1
+ ├─ 3. 处理 h1，没有子节点
+ ├─ 4. 找 sibling → ul
+ ├─ 5. 处理 ul，进入 child → li1
+ ├─ 6. 处理 li1，没有子节点
+ ├─ 7. 找 sibling → li2
+ ├─ 8. 处理 li2，没有子节点
+ └─ 9. 返回父节点 ul → 返回 div → 完成
+  */
   function performUnitOfWork(wipFiber) {
+    // 1. 处理当前 Fiber（创建 DOM 或调用 render）
     beginWork(wipFiber);
+
+    // 2. 有子节点？返回子节点继续
     if (wipFiber.child) {
       return wipFiber.child;
     }
@@ -313,35 +366,38 @@ function importFromBelow() {
     // No child, we call completeWork until we find a sibling
     let uow = wipFiber;
     while (uow) {
-      completeWork(uow);
+      completeWork(uow); // 标记 effect，收集到父节点
       if (uow.sibling) {
         // Sibling needs to beginWork
-        return uow.sibling;
+        return uow.sibling; // 有兄弟节点？返回兄弟继续
       }
-      uow = uow.parent;
+      uow = uow.parent;  // 向上找父节点
     }
   }
 
   function beginWork(wipFiber) {
-    if (wipFiber.tag == CLASS_COMPONENT) {
+    if (wipFiber.tag == CLASS_COMPONENT) { // 组件：调用 render()
       updateClassComponent(wipFiber);
     } else {
-      updateHostComponent(wipFiber);
+      updateHostComponent(wipFiber);  // DOM：创建 DOM 节点
     }
   }
 
   function updateHostComponent(wipFiber) {
+    / 1. 创建真实 DOM（如果还没有）
     if (!wipFiber.stateNode) {
       wipFiber.stateNode = createDomElement(wipFiber);
     }
-
+    // 2. 协调子节点（创建 child Fibers）
     const newChildElements = wipFiber.props.children;
     reconcileChildrenArray(wipFiber, newChildElements);
   }
 
   function updateClassComponent(wipFiber) {
     let instance = wipFiber.stateNode;
+    
     if (instance == null) {
+      // 1. 创建组件实例
       // Call class constructor
       instance = wipFiber.stateNode = createInstance(wipFiber);
     } else if (wipFiber.props == instance.props && !wipFiber.partialState) {
@@ -351,10 +407,15 @@ function importFromBelow() {
     }
 
     instance.props = wipFiber.props;
+    
+    // 2. 合并 state
     instance.state = Object.assign({}, instance.state, wipFiber.partialState);
     wipFiber.partialState = null;
-
+    
+    // 3. 调用 render，获取子元素
     const newChildElements = wipFiber.stateNode.render();
+
+    // 4. 协调子节点
     reconcileChildrenArray(wipFiber, newChildElements);
   }
 
@@ -374,10 +435,11 @@ function importFromBelow() {
       const sameType = oldFiber && element && element.type == oldFiber.type;
 
       if (sameType) {
+        // 类型相同：复用，标记 UPDATE
         newFiber = {
           type: oldFiber.type,
           tag: oldFiber.tag,
-          stateNode: oldFiber.stateNode,
+          stateNode: oldFiber.stateNode, // ← 复用 DOM！
           props: element.props,
           parent: wipFiber,
           alternate: oldFiber,
@@ -387,6 +449,7 @@ function importFromBelow() {
       }
 
       if (element && !sameType) {
+        // 类型不同：新建，标记 PLACEMENT
         newFiber = {
           type: element.type,
           tag:
@@ -398,6 +461,7 @@ function importFromBelow() {
       }
 
       if (oldFiber && !sameType) {
+        // 旧的不能复用：标记 DELETION
         oldFiber.effectTag = DELETION;
         wipFiber.effects = wipFiber.effects || [];
         wipFiber.effects.push(oldFiber);
@@ -446,6 +510,7 @@ function importFromBelow() {
   }
 
   function completeWork(fiber) {
+    // 把当前 fiber 的 effects 向上合并到父节点
     if (fiber.tag == CLASS_COMPONENT) {
       fiber.stateNode.__fiber = fiber;
     }
@@ -456,11 +521,13 @@ function importFromBelow() {
       const parentEffects = fiber.parent.effects || [];
       fiber.parent.effects = parentEffects.concat(childEffects, thisEffect);
     } else {
+      // 根节点，准备提交
       pendingCommit = fiber;
     }
   }
 
   function commitAllWork(fiber) {
+    // 找到真实的父 DOM（跳过组件）
     fiber.effects.forEach(f => {
       commitWork(f);
     });
@@ -481,11 +548,11 @@ function importFromBelow() {
     const domParent = domParentFiber.stateNode;
 
     if (fiber.effectTag == PLACEMENT && fiber.tag == HOST_COMPONENT) {
-      domParent.appendChild(fiber.stateNode);
+      domParent.appendChild(fiber.stateNode); // 新增
     } else if (fiber.effectTag == UPDATE) {
-      updateDomProperties(fiber.stateNode, fiber.alternate.props, fiber.props);
+      updateDomProperties(fiber.stateNode, fiber.alternate.props, fiber.props); // 更新
     } else if (fiber.effectTag == DELETION) {
-      commitDeletion(fiber, domParent);
+      commitDeletion(fiber, domParent); // 删除
     }
   }
 
